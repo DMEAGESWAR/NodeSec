@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push backend
+        run: |
+          docker build -t nodesec-backend ./nodesec-backend
+          echo "Backend image built successfully"
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: cd nodesec-frontend && npm ci && npm run build
+      - name: Build frontend image
+        run: |
+          docker build -t nodesec-frontend ./nodesec-frontend
+          echo "Frontend image built successfully"

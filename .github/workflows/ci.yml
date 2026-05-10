@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: nodesec_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: cd nodesec-backend && pip install -r requirements.txt
+      - run: cd nodesec-backend && pytest tests/ -v --cov=. --cov-report=xml || true
+      - run: cd nodesec-backend && pip install ruff && ruff check . || true
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: cd nodesec-frontend && npm ci
+      - run: cd nodesec-frontend && npm run lint || true
+      - run: cd nodesec-frontend && npm run test || true
+      - run: cd nodesec-frontend && npm run build

@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary:   #0D1117;
+  --bg-secondary: #161B22;
+  --bg-tertiary:  #1C2128;
+  --accent-blue:  #1F6FEB;
+  --accent-cyan:  #58A6FF;
+  --red-critical: #FF4444;
+  --amber-high:   #F0A500;
+  --green-safe:   #3FB950;
+  --text-primary: #E6EDF3;
+  --text-muted:   #8B949E;
+  --border:       #30363D;
+  --radius-card:  8px;
+  --radius-input: 4px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* React Flow overrides */
+.react-flow__node {
+  font-family: 'Inter', sans-serif;
+}
+
+.react-flow__background {
+  background-color: var(--bg-primary);
+}
+
+.react-flow__controls button {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.react-flow__controls button:hover {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

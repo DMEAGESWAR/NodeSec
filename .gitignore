@@ -1,0 +1,143 @@
+# ============================================================
+# NodeSec — .gitignore
+# ============================================================
+
+# ── Secrets & environment variables ─────────────────────────
+# NEVER commit .env files — they contain passwords and API keys
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+*.env
+
+# Keep the examples so teammates know what vars are needed
+!.env.example
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# Test & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+nosetests.xml
+pytest.ini
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ── Node / Frontend ──────────────────────────────────────────
+node_modules/
+nodesec-frontend/node_modules/
+
+# Vite build output
+nodesec-frontend/dist/
+nodesec-frontend/dist-ssr/
+nodesec-frontend/.vite/
+
+# npm / yarn / pnpm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ── Docker & database ────────────────────────────────────────
+postgres_data/
+docker-data/
+*.sqlite3
+*.db
+
+# ── IDE & editors ────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── OS generated ─────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ── Misc project files ───────────────────────────────────────
+# pip bootstrap script (not needed in repo)
+nodesec-backend/get-pip.py
+
+# Local test scripts
+e2e_test.ps1
+
+# Alembic — keep migrations but not the compiled cache
+nodesec-backend/alembic/__pycache__/
+
+# WeasyPrint font cache
+.weasyprint/
+
+# ── Security — extra safety net ──────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+service-account*.json
