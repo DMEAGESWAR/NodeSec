@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # ── Auth ──
@@ -59,8 +59,7 @@ class DomainResponse(BaseModel):
     demo_mode: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Scan ──
@@ -87,8 +86,7 @@ class ScanResultResponse(BaseModel):
     edges: list[dict]
     chains: list[dict]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── SSE Events ──
@@ -116,8 +114,7 @@ class FindingResponse(BaseModel):
     verified_at: datetime | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Report ──

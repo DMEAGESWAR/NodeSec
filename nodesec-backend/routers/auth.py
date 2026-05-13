@@ -1,37 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from database import get_db
 from auth.jwt_handler import hash_password, verify_password, create_access_token
 from models.models import User
-from sqlalchemy import select
-from pydantic import BaseModel
+from schemas.schemas import UserRegisterRequest, UserLoginRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class RegisterRequest(BaseModel):
-    email: str
-    password: str
-    org_name: str
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
     """Register a new user account."""
-    if len(request.password) < 8:
-        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
-
-    existing = await db.execute(select(User).where(User.email == request.email.lower().strip()))
+    existing = await db.execute(select(User).where(User.email == request.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     user = User(
-        email=request.email.lower().strip(),
+        email=request.email,
         password_hash=hash_password(request.password),
         org_name=request.org_name,
     )
@@ -48,7 +34,7 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login")
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(request: UserLoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate and return a JWT token."""
     result = await db.execute(select(User).where(User.email == request.email.lower().strip()))
     user = result.scalar_one_or_none()

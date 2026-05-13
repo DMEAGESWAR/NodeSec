@@ -92,7 +92,11 @@ class FindingRepository:
     async def create_findings(scan_id: UUID, chains: list[dict], db: AsyncSession) -> list[Finding]:
         findings = []
         for chain in chains:
-            finding = Finding(scan_id=scan_id, chain_id=chain["chain_id"], status="open")
+            chain_id = chain.get("chain_id")
+            # chain_id is injected by save_chains(); skip if somehow absent
+            if not chain_id:
+                continue
+            finding = Finding(scan_id=scan_id, chain_id=chain_id, status="open")
             db.add(finding)
             findings.append(finding)
         await db.flush()
