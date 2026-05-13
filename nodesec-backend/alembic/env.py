@@ -25,7 +25,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    from config import settings
+    url = settings.database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -43,8 +44,11 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    from config import settings
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = settings.database_url
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
