@@ -3,18 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary:   #0D1117;
-  --bg-secondary: #161B22;
-  --bg-tertiary:  #1C2128;
-  --accent-blue:  #1F6FEB;
-  --accent-cyan:  #58A6FF;
-  --red-critical: #FF4444;
-  --amber-high:   #F0A500;
-  --green-safe:   #3FB950;
-  --text-primary: #E6EDF3;
-  --text-muted:   #8B949E;
-  --border:       #30363D;
-  --radius-card:  8px;
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E2E8F0;
+
+  --accent-blue: #2563EB;
+  --accent-cyan: #0EA5E9;
+
+  --red-critical: #DC2626;
+  --amber-high: #D97706;
+  --green-safe: #16A34A;
+
+  --text-primary: #0F172A;
+  --text-muted: #64748B;
+
+  --border: #CBD5E1;
+
+  --radius-card: 8px;
   --radius-input: 4px;
 }
 
@@ -82,7 +87,10 @@ body {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
