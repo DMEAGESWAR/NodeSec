@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Globe, Play, Zap } from 'lucide-react';
 import Button from '../ui/Button';
 
-export default function DomainInput({ onSubmit, onDemo, isLoading }) {
-  const [domain, setDomain] = useState('');
+export default function DomainInput({ onSubmit, onDemo, isLoading, defaultValue = '' }) {
+  const [domain, setDomain] = useState(defaultValue);
 
   const handleSubmit = (e) => {
     e.preventDefault();

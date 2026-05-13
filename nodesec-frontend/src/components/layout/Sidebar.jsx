@@ -11,7 +11,7 @@ export default function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-56 bg-bg-secondary border-r border-border flex flex-col hidden md:flex">
+    <aside className="w-56 bg-bg-secondary border-r border-border flex-col hidden md:flex">
       <Link to="/dashboard" className="flex items-center gap-3 px-5 py-4 border-b border-border">
         <Shield size={24} className="text-accent-cyan" />
         <span className="font-semibold text-lg">NodeSec</span>

@@ -7,7 +7,7 @@ def kill_chain_depth(chains: list[dict], scan_data: dict) -> dict:
         return {"depth": 0, "max_depth": 5, "phases": {"recon": 0, "access": 0, "lateral": 0, "exfil": 0},
                 "label": "No chainable vulnerabilities found"}
 
-    rule_ids = {c["rule_id"] for c in chains}
+    rule_ids = {c.get("rule_id") for c in chains if c.get("rule_id")}
     phases = {"recon": 0, "access": 0, "lateral": 0, "exfil": 0}
 
     # Recon phase

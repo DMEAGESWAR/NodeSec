@@ -299,7 +299,7 @@ class RuleEngine:
         Calculate attack chain depth — how many steps an attacker can chain together.
         Returns a dict with the depth score and a breakdown of phases.
         """
-        rule_ids = {c["rule_id"] for c in chains}
+        rule_ids = {c.get("rule_id") for c in chains if c.get("rule_id")}
         phases = {"recon": 0, "access": 0, "lateral": 0, "exfil": 0}
 
         # Recon phase

@@ -39,7 +39,9 @@ async def run_full_scan(
     scan_id: UUID, domain: str, is_demo: bool, db: AsyncSession
 ):
     """Orchestrates the full OSINT pipeline and rule engine evaluation."""
-    queue = create_event_queue(scan_id)
+    # Use the queue pre-created by start_scan() to avoid the race condition where
+    # the worker finishes and deletes the queue before the SSE client subscribes.
+    queue = _event_queues.get(scan_id) or create_event_queue(scan_id)
 
     try:
         if is_demo:
