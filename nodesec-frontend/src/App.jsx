@@ -51,6 +51,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
         <Route path="/scan/:domainId?" element={<ProtectedRoute><AppLayout><ScanPage /></AppLayout></ProtectedRoute>} />
         <Route path="/result/:scanId" element={<ProtectedRoute><AppLayout><ResultPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />
         <Route path="/history/:domainId" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />
         <Route path="/findings/:scanId" element={<ProtectedRoute><AppLayout><FindingsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
