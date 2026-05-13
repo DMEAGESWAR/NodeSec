@@ -1,22 +1,17 @@
 FROM python:3.11-slim
 
 # ── No apt-get needed ────────────────────────────────────────────────────────
-# All Python packages in requirements.txt ship pre-built binary wheels for
-# linux/amd64 (asyncpg, psycopg2-binary, bcrypt, cryptography, etc.).
-# This means gcc/libpq-dev are NOT required and the build works without
-# internet access to apt repos (avoids DNS failures in corporate/restricted networks).
-#
-# weasyprint is intentionally excluded — it requires native GTK/Cairo libs
-# which cannot be installed without apt-get. PDF export is disabled in Docker.
+# All Python packages ship pre-built binary wheels for linux/amd64.
+# weasyprint is excluded — it requires native GTK/Cairo libs.
 # See requirements.txt for instructions to enable it on your host machine.
 
 WORKDIR /app
 
-# Install Python deps with --prefer-binary to guarantee pre-built wheels.
-# The grep excludes weasyprint since it needs GTK native libs.
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefer-binary \
-    $(grep -v "weasyprint\|^#" requirements.txt | tr '\n' ' ')
+# Install Python deps using a pre-filtered requirements file (no shell tricks).
+# --prefer-binary guarantees pre-built wheels; --timeout handles slow networks.
+COPY requirements-docker.txt .
+RUN pip install --no-cache-dir --prefer-binary --timeout 120 \
+    -r requirements-docker.txt
 
 # Copy application code
 COPY . .
