@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { addDomain, listDomains, verifyDomain } from '../api/domains';
@@ -22,13 +22,25 @@ function extractError(err) {
 
 export default function ScanPage() {
   const navigate = useNavigate();
-  const { domainId: preselectDomainId } = useParams();
+  const [searchParams] = useSearchParams();
   const [scanId, setScanId] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [adding, setAdding] = useState(false);
   const navigatedRef = useRef(false);
 
+  // Pre-filled from dashboard "Scan" button
+  const prefilledDomain = searchParams.get('domainName') || '';
+  const prefilledDomainId = searchParams.get('domainId') || '';
+  const autoDemo = searchParams.get('demo') === '1';
+
   const { data: domains } = useQuery({ queryKey: ['domains'], queryFn: listDomains });
+
+  // Auto-trigger demo if ?demo=1
+  useEffect(() => {
+    if (autoDemo && !scanning) {
+      handleDemo();
+    }
+  }, [autoDemo]);
   const { events, done: sseDone } = useSSE(scanId, !!scanId);
 
   const completeEvent = events.find((e) => e.event === 'complete');
@@ -148,17 +160,16 @@ export default function ScanPage() {
   return (
     <PageWrapper title="New Scan">
       <Card className="mb-6">
-        <DomainInput onSubmit={handleDomain} onDemo={handleDemo} isLoading={adding} />
+        <DomainInput
+          onSubmit={handleDomain}
+          onDemo={handleDemo}
+          isLoading={adding}
+          defaultValue={prefilledDomain}
+        />
         <p className="text-xs text-text-muted mt-3">
           Enter any domain to scan. NodeSec only uses passive data collection — no requests are sent directly to the target.
         </p>
       </Card>
-
-      {preselectDomainId && (
-        <p className="text-xs text-text-muted">
-          Selected domain: {domains?.find((d) => d.id === preselectDomainId)?.domain_name || preselectDomainId}
-        </p>
-      )}
     </PageWrapper>
   );
 }

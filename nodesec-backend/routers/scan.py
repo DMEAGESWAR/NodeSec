@@ -8,7 +8,7 @@ from database import get_db, AsyncSessionLocal
 from auth.jwt_handler import get_current_user
 from models.models import User
 from services.scan_service import DomainService, ScanRepository, GraphRepository
-from workers.scan_worker import run_full_scan
+from workers.scan_worker import run_full_scan, create_event_queue
 from schemas import ScanStartRequest, ScanStartResponse, ScanResultResponse
 
 router = APIRouter(prefix="/scan", tags=["scan"])
@@ -41,6 +41,10 @@ async def start_scan(
 
     scan = await ScanRepository.create_scan(domain.id, request.is_demo, db)
 
+    # Create the SSE event queue BEFORE launching the background task.
+    # This prevents the race condition where the worker completes (and deletes the queue)
+    # before the SSE client has a chance to call /stream and subscribe.
+    create_event_queue(scan.id)
     asyncio.create_task(_run_scan_with_own_session(scan.id, domain.domain_name, request.is_demo))
 
     return ScanStartResponse(scan_id=scan.id, status="running")
@@ -58,10 +62,13 @@ async def stream_scan(
         raise HTTPException(status_code=404, detail="Scan not found")
 
     async def generate_events():
-        from workers.scan_worker import get_event_queue, create_event_queue
+        from workers.scan_worker import get_event_queue
         queue = get_event_queue(UUID(scan_id))
+
         if queue is None:
-            queue = create_event_queue(UUID(scan_id))
+            # Scan already completed before client connected — serve result directly
+            yield f"data: {json.dumps({'event': 'complete', 'data': {'scan_id': str(scan_id), 'already_done': True}})}\n\n"
+            return
 
         yield f"data: {json.dumps({'event': 'connected', 'data': {'scan_id': str(scan_id)}})}\n\n"
 

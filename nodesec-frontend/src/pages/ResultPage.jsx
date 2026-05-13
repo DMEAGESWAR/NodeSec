@@ -116,9 +116,14 @@ export default function ResultPage() {
           <h1 className="text-xl font-bold">Scan Results</h1>
           <ScanStatus status={scan.status} />
         </div>
-        <Button variant="secondary" onClick={handleDownloadPDF}>
-          <FileText size={16} className="mr-1" /> Export PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/findings/${scanId}`)}>
+            View Findings
+          </Button>
+          <Button variant="secondary" onClick={handleDownloadPDF}>
+            <FileText size={16} className="mr-1" /> Export PDF
+          </Button>
+        </div>
       </div>
 
       <GraphControls activeFilter={activeFilter} onFilterChange={setActiveFilter} />

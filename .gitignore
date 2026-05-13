@@ -118,6 +118,9 @@ nodesec-backend/get-pip.py
 # Local test scripts
 e2e_test.ps1
 
+# Production-only nginx entrypoint (not used in dev Docker setup)
+nodesec-frontend/docker-entrypoint.sh
+
 # Alembic — keep migrations but not the compiled cache
 nodesec-backend/alembic/__pycache__/
 
