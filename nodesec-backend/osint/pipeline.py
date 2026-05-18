@@ -14,6 +14,15 @@ SHODAN_INTERNETDB_URL = "https://internetdb.shodan.io/{}"
 COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 993, 995, 3306, 3389, 5432, 8080, 8443]
 
 
+def _make_client(timeout: float = 15.0) -> httpx.AsyncClient:
+    """
+    Create an httpx client that forces IPv4.
+    Docker on Windows only routes IPv4 correctly — IPv6 connections fail silently.
+    """
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+    return httpx.AsyncClient(timeout=timeout, transport=transport)
+
+
 # ── Subdomain Discovery (multi-source) ──
 
 async def subdomain_discovery(domain: str) -> list[str]:
