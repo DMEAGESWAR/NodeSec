@@ -67,13 +67,16 @@ app = FastAPI(
 )
 
 
+from config import settings
+
 # ── CORS Middleware ──
+ALLOWED_ORIGINS = settings.allowed_origins.split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Dev mode
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
