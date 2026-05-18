@@ -3,6 +3,7 @@ import ssl
 import logging
 import dns.resolver
 import httpx
+import shodan
 
 logger = logging.getLogger("nodesec.osint")
 
@@ -195,14 +196,32 @@ async def email_security_checks(domain: str) -> dict:
     return checks
 
 
-# ── Shodan InternetDB (passive, free, no API key) ──
+# ── Shodan API & InternetDB (fallback) ──
 
-async def shodan_internetdb_lookup(host: str) -> dict:
+async def shodan_lookup(host: str, api_key: str | None = None) -> dict:
     """
-    Query Shodan InternetDB for open ports, CVEs, and tags.
-    Truly passive — queries Shodan, not the target. Free, no API key.
-    Rate limit: ~1 req/sec.
+    Query Shodan for open ports, CVEs, and tags.
+    If api_key is provided, uses the authenticated Shodan API.
+    Falls back to the free InternetDB API if no key is provided or if the authenticated API fails.
     """
+    if api_key:
+        try:
+            api = shodan.Shodan(api_key)
+            # api.host() is synchronous, so we run it in a thread
+            data = await asyncio.to_thread(api.host, host)
+            return {
+                "open_ports": data.get("ports", []),
+                "vulns": data.get("vulns", []),
+                "tags": data.get("tags", []),
+                "hostnames": data.get("hostnames", []),
+                "source": "Shodan API",
+            }
+        except shodan.APIError as e:
+            logger.warning(f"Shodan API lookup failed for {host}: {e}. Falling back to InternetDB.")
+        except Exception as e:
+            logger.warning(f"Unexpected error with Shodan API for {host}: {e}. Falling back to InternetDB.")
+
+    # Fallback to InternetDB
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(SHODAN_INTERNETDB_URL.format(host))
@@ -213,22 +232,23 @@ async def shodan_internetdb_lookup(host: str) -> dict:
                     "vulns": data.get("vulns", []),
                     "tags": data.get("tags", []),
                     "hostnames": data.get("hostnames", []),
+                    "source": "Shodan InternetDB",
                 }
             if resp.status_code == 404:
-                return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "note": "No Shodan data for this host"}
+                return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "note": "No Shodan data for this host", "source": "Shodan InternetDB"}
             logger.warning(f"Shodan InternetDB returned {resp.status_code} for {host}")
-            return {"open_ports": [], "vulns": [], "tags": [], "hostnames": []}
+            return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "source": "Shodan InternetDB"}
     except Exception as e:
         logger.warning(f"Shodan InternetDB lookup failed for {host}: {e}")
-        return {"open_ports": [], "vulns": [], "tags": [], "hostnames": []}
+        return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "source": "Error"}
 
 
-async def passive_port_discovery(host: str) -> list[int]:
+async def passive_port_discovery(host: str, shodan_api_key: str | None = None) -> list[int]:
     """
-    Discover open ports using Shodan InternetDB (free, passive).
+    Discover open ports using Shodan API or InternetDB (passive).
     Falls back to a lightweight socket check on well-known ports if Shodan has no data.
     """
-    shodan_data = await shodan_internetdb_lookup(host)
+    shodan_data = await shodan_lookup(host, shodan_api_key)
     ports = shodan_data.get("open_ports", [])
 
     if not ports:
