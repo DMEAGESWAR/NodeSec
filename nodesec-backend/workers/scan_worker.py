@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from osint.pipeline import (
     subdomain_discovery, dns_records, passive_port_discovery,
-    ssl_check, check_domain_breach, email_security_checks, shodan_internetdb_lookup,
+    ssl_check, check_domain_breach, email_security_checks, shodan_lookup,
 )
 from rule_engine.engine import RuleEngine
 from scoring.scorer import overall_score, kill_chain_depth
@@ -75,8 +75,8 @@ async def _run_live_scan(scan_id: UUID, domain: str, db: AsyncSession):
     email_sec = await email_security_checks(domain)
     _push_event(scan_id, "progress", {"phase": "email_security", "email_security": email_sec})
 
-    # ── Phase 4: Port Discovery (Shodan InternetDB + lightweight fallback) ──
-    _push_event(scan_id, "progress", {"phase": "ports", "message": "Discovering open ports (Shodan InternetDB)..."})
+    # ── Phase 4: Port Discovery (Shodan API / InternetDB + lightweight fallback) ──
+    _push_event(scan_id, "progress", {"phase": "ports", "message": "Discovering open ports (Shodan)..."})
 
     ips = set()
     try:
@@ -92,12 +92,14 @@ async def _run_live_scan(scan_id: UUID, domain: str, db: AsyncSession):
     all_open_ports = []
     shodan_data = {}
     for ip in ips:
-        ports = await passive_port_discovery(ip)
+        ports = await passive_port_discovery(ip, settings.shodan_api_key or None)
         all_open_ports.extend(ports)
-        shodan_data[ip] = await shodan_internetdb_lookup(ip)
+        ip_shodan_data = await shodan_lookup(ip, settings.shodan_api_key or None)
+        shodan_data[ip] = ip_shodan_data
+        source_name = ip_shodan_data.get("source", "Shodan")
         _push_event(scan_id, "progress", {
             "phase": "ports", "host": ip, "open_ports": ports,
-            "source": "Shodan InternetDB",
+            "source": source_name,
         })
 
     all_open_ports = sorted(set(all_open_ports))

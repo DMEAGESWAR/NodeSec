@@ -11,10 +11,6 @@ bcrypt>=4.0.0
 httpx>=0.26.0
 dnspython>=2.4.0
 jinja2>=3.1.0
-# weasyprint requires GTK/Cairo native libs — install separately if needed
-# On Windows: pip install weasyprint after installing GTK runtime from https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer
-# On Linux/Docker: weasyprint installs cleanly
-weasyprint>=60.0
 python-multipart>=0.0.6
 slowapi>=0.1.9
 shodan>=1.31.0
