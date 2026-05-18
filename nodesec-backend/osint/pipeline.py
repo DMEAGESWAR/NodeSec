@@ -44,7 +44,7 @@ async def subdomain_discovery(domain: str) -> list[str]:
 async def _crt_sh_subdomains(domain: str) -> list[str]:
     """crt.sh certificate transparency logs."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with _make_client(15.0) as client:
             resp = await client.get(CRTSH_URL.format(domain))
             if resp.status_code != 200:
                 logger.warning(f"crt.sh returned {resp.status_code} for {domain}")
@@ -68,7 +68,7 @@ async def _crt_sh_subdomains(domain: str) -> list[str]:
 async def _certspotter_subdomains(domain: str) -> list[str]:
     """CertSpotter API — free, no API key needed."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with _make_client(15.0) as client:
             resp = await client.get(CERTSPOTTER_URL.format(domain))
             if resp.status_code != 200:
                 return []
@@ -87,7 +87,7 @@ async def _certspotter_subdomains(domain: str) -> list[str]:
 async def _otx_subdomains(domain: str) -> list[str]:
     """AlienVault OTX passive DNS — free, no API key needed for basic lookups."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with _make_client(15.0) as client:
             resp = await client.get(OTX_URL.format(domain))
             if resp.status_code != 200:
                 return []
@@ -126,94 +126,102 @@ async def dns_records(domain: str) -> dict:
 # ── Email Security Checks ──
 
 async def email_security_checks(domain: str) -> dict:
-    """
-    Check SPF, DKIM, DMARC, and MX configuration.
-    These are truly passive — DNS queries only.
-    """
+    """Check SPF, DKIM, DMARC, and MX configuration via DNS only."""
     checks = {
-        "spf": False,
-        "spf_record": None,
+        "spf": False, "spf_record": None,
         "dkim": False,
-        "dmarc": False,
-        "dmarc_policy": None,
-        "dmarc_record": None,
-        "mx_count": 0,
-        "mx_hosts": [],
+        "dmarc": False, "dmarc_policy": None, "dmarc_record": None,
+        "mx_count": 0, "mx_hosts": [],
         "has_recommendations": False,
     }
 
-    # SPF check
     try:
         resolver = dns.resolver.Resolver()
         resolver.timeout = 5
         resolver.lifetime = 5
-        answers = resolver.resolve(domain, "TXT")
-        for a in answers:
-            txt = str(a).strip('"').strip("'")
-            if txt.startswith("v=spf1"):
-                checks["spf"] = True
-                checks["spf_record"] = txt
-                break
-    except Exception:
-        pass
 
-    # DMARC check
-    try:
-        answers = resolver.resolve(f"_dmarc.{domain}", "TXT")
-        for a in answers:
-            txt = str(a).strip('"').strip("'")
-            if txt.startswith("v=DMARC1"):
-                checks["dmarc"] = True
-                checks["dmarc_record"] = txt
-                txt_lower = txt.lower()
-                if "p=reject" in txt_lower:
-                    checks["dmarc_policy"] = "reject"
-                elif "p=quarantine" in txt_lower:
-                    checks["dmarc_policy"] = "quarantine"
-                elif "p=none" in txt_lower:
-                    checks["dmarc_policy"] = "none"
-                break
-    except Exception:
-        pass
-
-    # DKIM check — look for common selector patterns
-    common_selectors = ["default", "google", "selector1", "selector2", "dkim", "mail", "key1"]
-    for selector in common_selectors:
+        # SPF
         try:
-            answers = resolver.resolve(f"{selector}._domainkey.{domain}", "TXT")
-            for a in answers:
+            for a in resolver.resolve(domain, "TXT"):
                 txt = str(a).strip('"').strip("'")
-                if "v=DKIM1" in txt or "k=rsa" in txt:
-                    checks["dkim"] = True
+                if txt.startswith("v=spf1"):
+                    checks["spf"] = True
+                    checks["spf_record"] = txt
                     break
-            if checks["dkim"]:
-                break
         except Exception:
-            continue
+            pass
 
-    # MX count
-    try:
-        answers = resolver.resolve(domain, "MX")
-        mx_list = sorted([(a.preference, str(a.exchange).rstrip(".")) for a in answers])
-        checks["mx_count"] = len(mx_list)
-        checks["mx_hosts"] = [host for _, host in mx_list]
-    except Exception:
-        pass
+        # DMARC
+        try:
+            for a in resolver.resolve(f"_dmarc.{domain}", "TXT"):
+                txt = str(a).strip('"').strip("'")
+                if txt.startswith("v=DMARC1"):
+                    checks["dmarc"] = True
+                    checks["dmarc_record"] = txt
+                    tl = txt.lower()
+                    checks["dmarc_policy"] = (
+                        "reject" if "p=reject" in tl else
+                        "quarantine" if "p=quarantine" in tl else
+                        "none" if "p=none" in tl else None
+                    )
+                    break
+        except Exception:
+            pass
+
+        # DKIM
+        for selector in ["default", "google", "selector1", "selector2", "dkim", "mail", "key1"]:
+            try:
+                for a in resolver.resolve(f"{selector}._domainkey.{domain}", "TXT"):
+                    txt = str(a).strip('"').strip("'")
+                    if "v=DKIM1" in txt or "k=rsa" in txt:
+                        checks["dkim"] = True
+                        break
+                if checks["dkim"]:
+                    break
+            except Exception:
+                continue
+
+        # MX
+        try:
+            mx_list = sorted([(a.preference, str(a.exchange).rstrip(".")) for a in resolver.resolve(domain, "MX")])
+            checks["mx_count"] = len(mx_list)
+            checks["mx_hosts"] = [h for _, h in mx_list]
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.warning(f"email_security_checks failed for {domain}: {e}")
 
     checks["has_recommendations"] = not (checks["spf"] and checks["dmarc"] and checks["dmarc_policy"] == "reject")
     return checks
 
 
-# ── Shodan InternetDB (passive, free, no API key) ──
+# ── Shodan (API key if available, free InternetDB fallback) ──
 
-async def shodan_internetdb_lookup(host: str) -> dict:
+async def shodan_lookup(host: str, api_key: str | None = None) -> dict:
     """
-    Query Shodan InternetDB for open ports, CVEs, and tags.
-    Truly passive — queries Shodan, not the target. Free, no API key.
-    Rate limit: ~1 req/sec.
+    Query Shodan for open ports, CVEs, and tags.
+    Uses the authenticated Shodan API if api_key is provided,
+    falls back to the free InternetDB otherwise.
     """
+    if api_key:
+        try:
+            import shodan as shodan_lib
+            api = shodan_lib.Shodan(api_key)
+            data = await asyncio.to_thread(api.host, host)
+            return {
+                "open_ports": data.get("ports", []),
+                "vulns": list(data.get("vulns", {}).keys()),
+                "tags": data.get("tags", []),
+                "hostnames": data.get("hostnames", []),
+                "source": "Shodan API",
+            }
+        except Exception as e:
+            logger.warning(f"Shodan API failed for {host}: {e} — falling back to InternetDB")
+
+    # Free InternetDB fallback (no API key needed)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with _make_client(10.0) as client:
             resp = await client.get(SHODAN_INTERNETDB_URL.format(host))
             if resp.status_code == 200:
                 data = resp.json()
@@ -222,27 +230,28 @@ async def shodan_internetdb_lookup(host: str) -> dict:
                     "vulns": data.get("vulns", []),
                     "tags": data.get("tags", []),
                     "hostnames": data.get("hostnames", []),
+                    "source": "Shodan InternetDB",
                 }
             if resp.status_code == 404:
-                return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "note": "No Shodan data for this host"}
+                return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "source": "Shodan InternetDB"}
             logger.warning(f"Shodan InternetDB returned {resp.status_code} for {host}")
-            return {"open_ports": [], "vulns": [], "tags": [], "hostnames": []}
+            return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "source": "Shodan InternetDB"}
     except Exception as e:
         logger.warning(f"Shodan InternetDB lookup failed for {host}: {e}")
-        return {"open_ports": [], "vulns": [], "tags": [], "hostnames": []}
+        return {"open_ports": [], "vulns": [], "tags": [], "hostnames": [], "source": "Error"}
 
 
-async def passive_port_discovery(host: str) -> list[int]:
-    """
-    Discover open ports using Shodan InternetDB (free, passive).
-    Falls back to a lightweight socket check on well-known ports if Shodan has no data.
-    """
-    shodan_data = await shodan_internetdb_lookup(host)
+# Keep old name as alias so scan_worker.py doesn't break
+async def shodan_internetdb_lookup(host: str) -> dict:
+    return await shodan_lookup(host)
+
+
+async def passive_port_discovery(host: str, shodan_api_key: str | None = None) -> list[int]:
+    """Discover open ports using Shodan API or InternetDB, with socket fallback."""
+    shodan_data = await shodan_lookup(host, shodan_api_key)
     ports = shodan_data.get("open_ports", [])
 
     if not ports:
-        # Fallback: lightweight single-port check on just 80 and 443
-        ports = []
         for port in [80, 443]:
             try:
                 _, writer = await asyncio.wait_for(
@@ -254,7 +263,7 @@ async def passive_port_discovery(host: str) -> list[int]:
                 except Exception:
                     pass
                 ports.append(port)
-            except (asyncio.TimeoutError, TimeoutError, OSError, ConnectionRefusedError, Exception):
+            except Exception:
                 pass
 
     return sorted(set(ports))
@@ -263,12 +272,9 @@ async def passive_port_discovery(host: str) -> list[int]:
 # ── SSL Check ──
 
 async def ssl_check(host: str, port: int = 443) -> dict:
-    """
-    Check SSL certificate validity using asyncio (non-blocking).
-    """
+    """Check SSL certificate validity using asyncio (non-blocking)."""
     try:
         ctx = ssl.create_default_context()
-
         reader, writer = await asyncio.wait_for(
             asyncio.open_connection(host, port, ssl=ctx, server_hostname=host),
             timeout=8.0
@@ -308,15 +314,12 @@ async def ssl_check(host: str, port: int = 443) -> dict:
 # ── HIBP Breach Check ──
 
 async def check_domain_breach(domain: str, hibp_api_key: str | None) -> dict:
-    """
-    Check HIBP for domain breaches. Optional — requires API key.
-    The API key is free at https://haveibeenpwned.com/API/Key
-    """
+    """Check HIBP for domain breaches. Requires API key (free at haveibeenpwned.com)."""
     if not hibp_api_key:
         return {"breach_found": False, "breaches": [], "note": "HIBP API key not configured"}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with _make_client(10.0) as client:
             resp = await client.get(
                 f"https://haveibeenpwned.com/api/v3/breaches?domain={domain}",
                 headers={"hibp-api-key": hibp_api_key},
