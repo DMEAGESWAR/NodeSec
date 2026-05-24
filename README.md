@@ -1,4 +1,3 @@
-<h1 align="center">LUMIXON</h1>
 
  # NodeSec : Attack Surface Intelligence for Non-Experts
 
